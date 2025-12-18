@@ -5,15 +5,10 @@ import chromadb
 from chromadb.utils import embedding_functions
 from settings import *
 
-# Initialize Chroma client
-client = chromadb.PersistentClient(path=CHROMADB_DIR)
+client = chromadb.HttpClient(host="localhost", port=8001)
 
-# Create or get the collection
 collection = client.get_or_create_collection(
-    name=CHROMADB_COLLECTION,
-    embedding_function=embedding_functions.SentenceTransformerEmbeddingFunction(
-        model_name="all-MiniLM-L6-v2"
-    )
+    name=CHROMADB_COLLECTION
 )
 
 consumer = KafkaConsumer(

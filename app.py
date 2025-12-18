@@ -6,6 +6,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from sentence_transformers import SentenceTransformer
 
 app = FastAPI()
 
@@ -13,8 +14,12 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 
 templates = Jinja2Templates(directory="templates")
 
-client = chromadb.PersistentClient(path=CHROMADB_DIR)
-collection = client.get_collection(name=CHROMADB_COLLECTION)
+client = chromadb.HttpClient(host="localhost", port=8001)
+collection = client.get_or_create_collection(
+    name=CHROMADB_COLLECTION
+)
+
+model = SentenceTransformer("all-MiniLM-L6-v2")
 
 headers = {
     "Authorization": "Bearer " + LLM_API_KEY,
@@ -44,14 +49,11 @@ def generate(prompt):
 
 
 def retrieve_recent_weather(query, now_ts, window_seconds=30):
+    q_emb = model.encode([query]).tolist()
     results = collection.query(
-        query_texts=[query],
+        query_embeddings=q_emb,
         n_results=5,
-        where={
-            "timestamp": {
-                "$gte": now_ts - window_seconds
-            }
-        }
+        where={"timestamp": {"$gte": now_ts - window_seconds}}
     )
     return results
 
